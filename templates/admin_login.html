@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal - SpendWise</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body style="background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 100%);">
+  <div class="auth-wrapper" style="background: transparent;">
+    <div class="auth-card" style="border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <div class="auth-brand">
+        <div class="logo-icon" style="background: linear-gradient(135deg, #6366f1, #7c3aed);">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div style="margin-bottom: 0.35rem;">
+          <span class="admin-badge">Admin Portal</span>
+        </div>
+        <h1 style="font-size: 1.5rem; margin-top: 0.4rem;">Administrative Sign In</h1>
+        <p>Authorized access only</p>
+      </div>
+
+      <!-- Server error banner -->
+      <div id="authAlert" class="form-error visible" style="display: none; margin-bottom: 1.2rem; padding: 0.75rem; background: var(--red-50); border: 1px solid var(--red-100); border-radius: var(--radius-md);">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="authAlertText">Unauthorized access</span>
+      </div>
+
+      <form id="adminLoginForm" method="POST" action="/admin/login" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="adminEmail">Admin Email</label>
+          <div class="search-input-box" style="min-width: 100%;">
+            <i class="fa-regular fa-envelope"></i>
+            <input type="email" id="adminEmail" name="email" class="form-control" placeholder="admin@expense.com" required autocomplete="email">
+          </div>
+          <div class="form-error" id="emailError"><i class="fa-solid fa-circle-exclamation"></i> Please enter valid admin email</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="adminPassword">Password</label>
+          <div class="password-input-group">
+            <input type="password" id="adminPassword" name="password" class="form-control" placeholder="Enter admin password" required autocomplete="current-password">
+            <button type="button" class="password-toggle-btn" id="togglePasswordBtn" title="Toggle password visibility" aria-label="Toggle password visibility">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          <div class="form-error" id="passwordError"><i class="fa-solid fa-circle-exclamation"></i> Password is required</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="adminSubmitBtn" style="width: 100%; margin-top: 0.5rem; padding: 0.8rem; background: #6366f1;">
+          <span>Authenticate</span>
+          <i class="fa-solid fa-lock"></i>
+        </button>
+      </form>
+
+      <!-- Quick demo autofill helper -->
+      <div class="quick-fill-box" style="margin-top: 1.4rem;">
+        <div>
+          <strong>Default Admin:</strong> admin@expense.com / Admin@123
+        </div>
+        <button type="button" class="btn btn-sm btn-outline" id="autoFillAdminBtn" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">
+          Autofill
+        </button>
+      </div>
+
+      <div class="auth-footer" style="border-top-color: var(--gray-200);">
+        <p><a href="/login"><i class="fa-solid fa-arrow-left"></i> Return to User Login</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Autofill helper for tester convenience
+    document.getElementById('autoFillAdminBtn').addEventListener('click', () => {
+      document.getElementById('adminEmail').value = 'admin@expense.com';
+      document.getElementById('adminPassword').value = 'Admin@123';
+    });
+
+    // Toggle password visibility
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    const pwdInput = document.getElementById('adminPassword');
+    toggleBtn.addEventListener('click', () => {
+      const type = pwdInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      pwdInput.setAttribute('type', type);
+      toggleBtn.innerHTML = type === 'password' ? '<i class="fa-regular fa-eye"></i>' : '<i class="fa-regular fa-eye-slash"></i>';
+    });
+
+    // Form client-side validation & submit
+    const form = document.getElementById('adminLoginForm');
+    const emailInput = document.getElementById('adminEmail');
+    const emailError = document.getElementById('emailError');
+    const passwordError = document.getElementById('passwordError');
+    const authAlert = document.getElementById('authAlert');
+    const authAlertText = document.getElementById('authAlertText');
+    const submitBtn = document.getElementById('adminSubmitBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      emailError.classList.remove('visible');
+      passwordError.classList.remove('visible');
+      authAlert.style.display = 'none';
+
+      let isValid = true;
+      const email = emailInput.value.trim();
+      const password = pwdInput.value;
+
+      const emailRegex = /^[^\s@]+@[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        emailError.classList.add('visible');
+        isValid = false;
+      }
+
+      if (!password) {
+        passwordError.classList.add('visible');
+        isValid = false;
+      }
+
+      if (!isValid) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Authenticating...';
+
+      try {
+        const response = await fetch('/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          window.location.href = data.redirect || '/admin';
+        } else {
+          authAlertText.textContent = data.message || 'Invalid administrative credentials';
+          authAlert.style.display = 'flex';
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Authenticate</span> <i class="fa-solid fa-lock"></i>';
+        }
+      } catch (err) {
+        authAlertText.textContent = 'Server communication failed. Please try again.';
+        authAlert.style.display = 'flex';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>Authenticate</span> <i class="fa-solid fa-lock"></i>';
+      }
+    });
+  </script>
+</body>
+</html>
